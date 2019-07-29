@@ -1,14 +1,8 @@
 import MySQLdb as sql
 import MySQLdb.cursors
-from pprint import pprint
 from datetime import timedelta
 import calendar
-import time
-# import dbm
-# from sqlalchemy.orm import sessionmaker
 
-# Session = sessionmaker(bind=dbm.engine)
-# sess = Session()
 
 
 def init_db_config():
@@ -17,18 +11,18 @@ def init_db_config():
     return db
 
 
-def get_time_card(cur, target_ym, target_date, wcond):
+def get_daily_for_monthly(cur, target_ym, init_date ,wcond):
     # print(target_ym,target_date,wcond)
     cur.execute("""
-        SELECT * FROM TimeCard
+        SELECT * FROM Daily
         WHERE
         target_ym = {0} and
-        target_date = {1} and
         wcond_id = {2}
         ;
-        """.format(target_ym,target_date,wcond))
+        """.format(target_ym, wcond))
 
     return cur.fetchall()
+
 
 
 def get_work_condition(cur, wcond):
@@ -51,21 +45,21 @@ def get_category_law(cur):
     return cur.fetchall()
 
 
-def calculate_daily(curs, timecard, workcondition, categorylaw):
-    tablename = "Daily"
+def calculate_monthly(curs, daily, workcondition, categorylaw):
+    tablename = "Monthly"
 
-    daily = {}
+    montly = {}
 
     # Time 타입 null (00:00:00)
     null_time = timedelta(seconds=0)
 
     # -START 초기화
-    st_tc = list(filter(lambda timecard: timecard['type_code'] == 1, timecard))[0]
-    et_tc = list(filter(lambda timecard: timecard['type_code'] == 2, timecard))[0]
+    st_tc = list(filter(lambda daily: daily['type_code'] == 1, daily))[0]
+    et_tc = list(filter(lambda daily: daily['type_code'] == 2, daily))[0]
 
-    if list(filter(lambda timecard: timecard['type_code'] == 3, timecard)) and list(filter(lambda timecard: timecard['type_code'] == 4, timecard)):
-        rst_tc = list(filter(lambda timecard: timecard['type_code'] == 3, timecard))[0]
-        ret_tc = list(filter(lambda timecard: timecard['type_code'] == 4, timecard))[0]
+    if list(filter(lambda daily: daily['type_code'] == 3, daily)) and list(filter(lambda daily: daily['type_code'] == 4, daily)):
+        rst_tc = list(filter(lambda daily: daily['type_code'] == 3, daily))[0]
+        ret_tc = list(filter(lambda daily: daily['type_code'] == 4, daily))[0]
 
         art = ret_tc["in_time"] - rst_tc["in_time"]
     else:
@@ -176,8 +170,8 @@ class TimeRange:
 if __name__ == '__main__':
     mydb = init_db_config()
     curs = mydb.cursor()
-    wcd_id = 6
-    ym = 201908
+    wcd_id = 4
+    ym = 201907
     year = int(str(ym)[:4])
     month = int(str(ym)[4:])
     wc_res = get_work_condition(curs, wcd_id)

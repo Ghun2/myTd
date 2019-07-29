@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 def init_db_config():
     db = sql.connect(host="localhost",user="root",
-                      passwd="0000",db="DRSLR_V3",cursorclass=MySQLdb.cursors.DictCursor)
+                      passwd="0000",db="DRSLR_V4",cursorclass=MySQLdb.cursors.DictCursor)
     # cur = db.cursor()
     return db
 # cur.execute("SELECT * FROM TimeCard")
@@ -25,6 +25,61 @@ def get_work_condition(cur, wcond, uid):
             """.format(wcond,uid))
 
     return cur.fetchall()
+
+
+def get_work_contract(cur, uid, wpid):
+    cur.execute("""
+            SELECT * FROM WorkContract
+            WHERE
+            user_id = {0} OR 
+            wp_id = {1}
+            ;
+            """.format(uid,wpid))
+
+    return cur.fetchall()
+
+
+def init_work_contract_to_condition(curs, uid, wpid):
+    tablename = "WorkCondition"
+
+    wcont = get_work_contract(curs, uid, wpid)[0]
+    start_date = wcont["cont_date"]
+    start_ym = start_date[:6]
+    target_cld = calendar.monthcalendar(int(start_date[:4]),int(start_date[4:6]))
+    # pprint(target_cld)
+    # pprint(wcont)
+    for i,v in enumerate(target_cld):
+        week_num = i+1
+        # print(week_num,v)
+        for j,a in enumerate(v):
+            if a is 0 : continue
+            day_num = j+1
+            nowd = wcont[str(day_num)+"_start_pot"]
+            # print(day_num,a,nowd)
+            if nowd is None : continue
+            strit = str(a) if a >= 10 else "0" + str(a)
+            wcond_item = make_condition_item(wcont,start_ym+strit,week_num,day_num)
+
+            insert_target_data(curs,tablename,wcond_item)
+
+
+    # return wcont
+
+def make_condition_item(wcont,work_date,week_num,day_num):
+    item = {}
+    item["user_id"] = wcont["user_id"]
+    item["wp_id"] = wcont["wp_id"]
+    item["cont_id"] = wcont["cont_id"]
+    item["work_date"] = work_date
+    item["week_num"] = week_num
+    item["day_num"] = day_num
+    item["start_work_time"] = wcont[str(day_num)+"_start_pot"]
+    item["end_work_time"] = wcont[str(day_num)+"_end_pot"]
+    item["amount_rest_time"] = wcont[str(day_num) + "_rest_aot"]
+    item["amount_work_time"] = item["end_work_time"] - item["start_work_time"] - item["amount_rest_time"]
+    item["hourly_pay"] = wcont["hourly_pay"]
+
+    return item
 
 
 # requirement : WorkCondition(유저+사업장 = 근무조건) 테스트 데이터 생성기 TimeCard
@@ -104,13 +159,16 @@ def insert_target_data(curs, tablename, caled):
 if __name__ == '__main__':
     my_db = init_db_config()
     curs = my_db.cursor()
-    wcd_id = 4
+    wcd_id = 6
     user_id = 7
+    wp_id = 8
     # ym = 201905
 
-    wcond = get_work_condition(curs,wcd_id,user_id)
+    init_work_contract_to_condition(curs,user_id,wp_id)
+    # pprint(wcres)
+    # wcond = get_work_condition(curs,wcd_id,user_id)
     # pprint(wcond)
-    insert_time_card(curs,wcond[0],1)
+    # insert_time_card(curs,wcond[0],1)
 
     my_db.commit()
     my_db.close()
