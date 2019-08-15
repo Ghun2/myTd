@@ -4,7 +4,6 @@ from datetime import timedelta
 import calendar
 
 
-
 def init_db_config():
     db = sql.connect(host="localhost",user="root",
                       passwd="0000",db="DRSLR_V3",cursorclass=MySQLdb.cursors.DictCursor)
